@@ -2,6 +2,6 @@
   "ports": [],
   "volumes": [],
   "devices": [
-    "/dev/audio"
+    "/dev/snd"
   ]
 }
