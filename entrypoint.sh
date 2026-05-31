@@ -8,7 +8,7 @@ if [ -z "$AUDIO_DEVICE" ] || [ "$AUDIO_DEVICE" = "auto" ]; then
         base="${base#pcmC}"     # 1D0c
         card="${base%%D*}"      # 1
         dev="${base#*D}"; dev="${dev%c}"  # 0
-        AUDIO_DEVICE="hw:${card},${dev}"
+        AUDIO_DEVICE="plughw:${card},${dev}"
         echo "[INIT] Auto-detected audio capture device: ${AUDIO_DEVICE} (${capture})"
     else
         AUDIO_DEVICE="hw:0,0"
