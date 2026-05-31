@@ -1,0 +1,132 @@
+/*
+ * High level Protocol for the transport layer of the Helios system.
+ *
+ * This protocol is used to send and receive events between the different components of the Helios system.
+*/
+syntax = "proto3";
+
+package helios.transport;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "/transport";
+
+/*
+ * HandshakeRequest Message
+ *
+ * Sent by a client to initiate a connection with the Helios core.
+ */
+message HandshakeRequest {
+    int32 version = 1;  // Version ID of the transport protocol
+    string client_address = 2;  // Address of the client (e.g. "rocket.stage1.gps")
+    optional bool must_be_registered = 3;  // Require that Helios core has this component registered/present, or reject the connection
+}
+
+/*
+ * HandshakeResponse Message
+ *
+ * Returned by the core to acknowledge a successful handshake.
+ * Confirms the protocol version the core has agreed to use for the session.
+ */
+message HandshakeResponse {
+    int32 version = 1;  // Version ID of the transport protocol
+}
+
+/*
+ * Event Envelope
+ *
+ * Represents a single occurrence produced by a source.
+ * Source address is the address of the source that produced the event.
+ */
+message Event {
+    int32 id = 1;  // Unique ID of the event
+    string event_name = 2;  // Name of the event (e.g. "camera_image", "gps_data", "temperature", etc.)
+    google.protobuf.Timestamp timestamp = 3;  // Timestamp of the event
+    string source_address = 4;  // Address of the source that produced the event
+    bytes data = 5;  // Payload of the event
+}
+
+/*
+ * EventPublish Message
+ *
+ * Delivers an event to or from a given address.
+ *
+ * NOTE: This is the universal event-carrying message used in all directions:
+ * - a producer publishes to the core,
+ * - the core delivers to subscribers,
+ */
+message EventPublish {
+    string address = 1;  // Address of where the event is published to or from
+    string event_name = 2;  // Name of the event (e.g. "camera_image", "gps_data", "temperature", etc.)
+    Event event = 3;  // Event to publish
+    optional string request_id = 4;  // Optional request ID for tracking the request / Also used for subscription deliveries
+}
+
+/*
+ * EventRequest Message
+ *
+ * Asks the core to return the current event at the specified address. The core responds with an EventPublish containing the event, if one exists.
+ */
+message EventRequest {
+    string address = 1;  // Address of where the event is requested from
+    string event_name = 2;  // Name of the event (e.g. "camera_image", "gps_data", "temperature", etc.)
+    optional string request_id = 3;  // Optional request ID for tracking the request
+}
+
+/*
+ * EventError Message
+ *
+ * Represents an error that occurred while processing a request.
+ */
+message EventError {
+    enum ErrorCode {
+        UNKNOWN = 0;
+        NOT_FOUND = 1;
+        INVALID_REQUEST = 2;
+        INTERNAL_ERROR = 3;
+        TIMEOUT = 4;
+    }
+    string address = 1;  // Address of where the error occurred
+    string event_name = 2;  // Name of the event (e.g. "camera_image", "gps_data", "temperature", etc.)
+    ErrorCode error_code = 3;  // Code of the error
+    string message = 4;  // Message of the error
+    optional string request_id = 5;  // Optional request ID for tracking the request
+}
+
+/*
+ * EventSubscribe Message
+ *
+ * Registers the sender to receive ongoing EventPublish messages whenever the event at the specified address is updated.
+ * The subscription remains active until a corresponding EventUnsubscribe is sent.
+ */
+message EventSubscribe {
+    string address = 1;  // Address of where the event is subscribed to
+    string event_name = 2;  // Name of the event (e.g. "camera_image", "gps_data", "temperature", etc.)
+    string subscription_id = 3;  // Client-generated id; core tags matching EventPublish.request_id
+}
+
+/*
+* EventUnsubscribe Message
+*
+* Cancels the subscription identified by subscription_id (same value as EventSubscribe.subscription_id).
+*/
+message EventUnsubscribe {
+    string subscription_id = 1;
+}
+
+/*
+* TransportMessage Message
+*
+* The top-level envelope for all messages sent over the transport layer.
+*/
+message TransportMessage {
+    oneof message {
+        HandshakeRequest handshake_request = 1;
+        HandshakeResponse handshake_response = 2;
+        EventPublish event_publish = 3;
+        EventRequest event_request = 4;
+        EventError event_error = 5;
+        EventSubscribe event_subscribe = 6;
+        EventUnsubscribe event_unsubscribe = 7;
+    }
+}

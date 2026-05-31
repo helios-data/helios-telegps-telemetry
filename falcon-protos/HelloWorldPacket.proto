@@ -1,0 +1,12 @@
+/*
+ * Copyright (c) 2024 UBC Rocket
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+syntax = "proto3";
+
+message HelloWorldPacket {
+    uint32 counter = 1;
+    string message = 2;
+}

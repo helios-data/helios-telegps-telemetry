@@ -1,0 +1,13 @@
+[project]
+name = "helios-aprs-telemetry"
+version = "0.1.0"
+description = "APRS decoder and Helios node for audio-jack Baofeng radio reception"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "aprslib>=0.7.0",
+    "helios-python-sdk",
+]
+
+[tool.uv.sources]
+helios-python-sdk = { path = "helios-python-sdk", editable = true }

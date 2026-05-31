@@ -1,0 +1,7 @@
+{
+  "ports": [],
+  "volumes": [],
+  "devices": [
+    "/dev/audio"
+  ]
+}
