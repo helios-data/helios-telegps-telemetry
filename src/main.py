@@ -130,7 +130,7 @@ async def main_loop(args: argparse.Namespace) -> None:
     """Main loop — read AX.25 frames, decode to APRS, log and display."""
     print(f"Connecting to Direwolf KISS at {args.kiss_host}:{args.kiss_port}…")
 
-    node_uri = os.environ.get("HELIOS_NODE_URI", "Helios.APRS.Receiver")
+    node_uri = os.environ.get("HELIOS_NODE_URI", "Helios.Services.TeleGPS")
     helios_sdk = HeliosClient(
         core_address="Helios",
         core_port=5000,
