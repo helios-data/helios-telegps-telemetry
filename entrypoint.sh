@@ -1,7 +1,21 @@
 #!/bin/bash
 set -e
 
-AUDIO_DEVICE="${AUDIO_DEVICE:-hw:0,0}"
+if [ -z "$AUDIO_DEVICE" ] || [ "$AUDIO_DEVICE" = "auto" ]; then
+    capture=$(ls /dev/snd/pcmC*D*c 2>/dev/null | head -1)
+    if [ -n "$capture" ]; then
+        base="${capture##*/}"   # pcmC1D0c
+        base="${base#pcmC}"     # 1D0c
+        card="${base%%D*}"      # 1
+        dev="${base#*D}"; dev="${dev%c}"  # 0
+        AUDIO_DEVICE="plughw:${card},${dev}"
+        echo "[INIT] Auto-detected audio capture device: ${AUDIO_DEVICE} (${capture})"
+    else
+        AUDIO_DEVICE="hw:0,0"
+        echo "[WARN] No ALSA capture device found, falling back to hw:0,0"
+    fi
+fi
+
 MYCALL="${MYCALL:-N0CALL}"
 KISS_PORT="${KISS_PORT:-8001}"
 
