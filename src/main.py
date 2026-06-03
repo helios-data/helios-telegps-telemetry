@@ -31,13 +31,8 @@ _KMH_TO_KNOTS = 0.539957
 
 def _build_aprs_packet(packet: dict) -> AprsPacket:
     dest = packet.get("to", "")
-    path_str = packet.get("path", "")
-    all_parts = [p for p in path_str.split(",") if p]
-    # aprslib includes destination as the first element of the path string
-    if all_parts and all_parts[0].rstrip("*") == dest:
-        digipeaters = all_parts[1:]
-    else:
-        digipeaters = all_parts
+    # aprslib returns path as a list of digipeater strings (destination not included)
+    digipeaters = list(packet.get("path", []))
 
     lat = packet.get("latitude")
     lon = packet.get("longitude")
