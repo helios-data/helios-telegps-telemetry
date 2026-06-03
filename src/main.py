@@ -18,11 +18,59 @@ import os
 import sys
 
 from helios import HeliosClient
+from helios.generated.helios.transport import AprsPacket, AprsPosition
 
 from decoder.csv_logger import CsvLogger
 from decoder.formatting import print_compact, print_verbose
 from decoder.kiss_reader import KissReader
 from decoder.packet import decode_packet
+
+_M_TO_FT = 3.28084
+_KMH_TO_KNOTS = 0.539957
+
+
+def _build_aprs_packet(packet: dict) -> AprsPacket:
+    dest = packet.get("to", "")
+    path_str = packet.get("path", "")
+    all_parts = [p for p in path_str.split(",") if p]
+    # aprslib includes destination as the first element of the path string
+    if all_parts and all_parts[0].rstrip("*") == dest:
+        digipeaters = all_parts[1:]
+    else:
+        digipeaters = all_parts
+
+    lat = packet.get("latitude")
+    lon = packet.get("longitude")
+
+    if lat is not None and lon is not None:
+        alt_m = packet.get("altitude")
+        speed_kmh = packet.get("speed")
+        position = AprsPosition(
+            latitude=float(lat),
+            longitude=float(lon),
+            altitude_ft=float(alt_m) * _M_TO_FT if alt_m is not None else None,
+            course_deg=float(packet["course"]) if "course" in packet else None,
+            speed_knots=float(speed_kmh) * _KMH_TO_KNOTS if speed_kmh is not None else None,
+            symbol=packet.get("symbol_table", "") + packet.get("symbol", ""),
+            comment=packet.get("comment") or None,
+        )
+        return AprsPacket(
+            source=packet.get("from", ""),
+            destination=dest,
+            path=digipeaters,
+            timestamp=packet.get("time"),
+            position=position,
+        )
+    else:
+        raw = packet.get("raw", "")
+        info = raw.split(":", 1)[1] if ":" in raw else raw
+        return AprsPacket(
+            source=packet.get("from", ""),
+            destination=dest,
+            path=digipeaters,
+            timestamp=packet.get("time"),
+            raw_info=info,
+        )
 
 
 def build_config() -> argparse.Namespace:
@@ -173,7 +221,7 @@ async def main_loop(args: argparse.Namespace) -> None:
                     try:
                         await helios_sdk.publish_event(
                             event_name="aprs",
-                            data=bytes(raw),
+                            data=bytes(_build_aprs_packet(packet)),
                         )
                     except Exception as exc:
                         print(f"[Helios] Send failed: {exc}", file=sys.stderr)
