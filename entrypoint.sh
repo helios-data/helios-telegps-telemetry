@@ -11,8 +11,8 @@ if [ -z "$AUDIO_DEVICE" ] || [ "$AUDIO_DEVICE" = "auto" ]; then
         AUDIO_DEVICE="plughw:${card},${dev}"
         echo "[INIT] Auto-detected audio capture device: ${AUDIO_DEVICE} (${capture})"
     else
-        AUDIO_DEVICE="hw:0,0"
-        echo "[WARN] No ALSA capture device found, falling back to hw:0,0"
+        AUDIO_DEVICE="hw:1,0"
+        echo "[WARN] No ALSA capture device found, falling back to hw:1,0"
     fi
 fi
 
