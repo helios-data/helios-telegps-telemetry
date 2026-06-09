@@ -18,10 +18,12 @@ fi
 
 MYCALL="${MYCALL:-N0CALL}"
 KISS_PORT="${KISS_PORT:-8001}"
+APRS_BAUD="${APRS_BAUD:-1200}"
 
 sed \
     -e "s|AUDIO_DEVICE_PLACEHOLDER|${AUDIO_DEVICE}|g" \
     -e "s|MYCALL_PLACEHOLDER|${MYCALL}|g" \
+    -e "s|MODEM_BAUD_PLACEHOLDER|${APRS_BAUD}|g" \
     /etc/direwolf/direwolf.conf.template \
     > /tmp/direwolf.conf
 
