@@ -1,7 +1,29 @@
 #!/bin/bash
 set -e
 
-if [ -z "$AUDIO_DEVICE" ] || [ "$AUDIO_DEVICE" = "auto" ]; then
+# Parse direwolf-specific flags first; everything else is forwarded to main.py.
+# Flags here take precedence over environment variables of the same name.
+#
+#   --aprs-baud  1200|9600   Direwolf modem baud rate (default: 1200)
+#   --audio-device <dev>     ALSA capture device (default: auto)
+#   --mycall <call>          Station callsign (default: N0CALL)
+
+APRS_BAUD="${APRS_BAUD:-1200}"
+MYCALL="${MYCALL:-N0CALL}"
+KISS_PORT="${KISS_PORT:-8001}"
+AUDIO_DEVICE="${AUDIO_DEVICE:-auto}"
+
+remaining=()
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --aprs-baud)    APRS_BAUD="$2";    shift 2 ;;
+        --audio-device) AUDIO_DEVICE="$2"; shift 2 ;;
+        --mycall)       MYCALL="$2";       shift 2 ;;
+        *)              remaining+=("$1"); shift   ;;
+    esac
+done
+
+if [ "$AUDIO_DEVICE" = "auto" ]; then
     capture=$(ls /dev/snd/pcmC*D*c 2>/dev/null | head -1)
     if [ -n "$capture" ]; then
         base="${capture##*/}"   # pcmC1D0c
@@ -16,10 +38,6 @@ if [ -z "$AUDIO_DEVICE" ] || [ "$AUDIO_DEVICE" = "auto" ]; then
     fi
 fi
 
-MYCALL="${MYCALL:-N0CALL}"
-KISS_PORT="${KISS_PORT:-8001}"
-APRS_BAUD="${APRS_BAUD:-1200}"
-
 sed \
     -e "s|AUDIO_DEVICE_PLACEHOLDER|${AUDIO_DEVICE}|g" \
     -e "s|MYCALL_PLACEHOLDER|${MYCALL}|g" \
@@ -27,7 +45,7 @@ sed \
     /etc/direwolf/direwolf.conf.template \
     > /tmp/direwolf.conf
 
-echo "[INIT] Starting Direwolf (device=${AUDIO_DEVICE}, callsign=${MYCALL})..."
+echo "[INIT] Starting Direwolf (device=${AUDIO_DEVICE}, callsign=${MYCALL}, baud=${APRS_BAUD})..."
 direwolf -c /tmp/direwolf.conf &
 
 echo "[INIT] Waiting for KISS port ${KISS_PORT}..."
@@ -39,4 +57,4 @@ for i in $(seq 1 30); do
     sleep 0.5
 done
 
-exec python src/main.py "$@"
+exec python src/main.py "${remaining[@]}"
