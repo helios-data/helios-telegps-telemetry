@@ -2,11 +2,14 @@
 Packet decoding pipeline: AX.25 frame → TNC2 string → APRS parse.
 """
 
+import re
 import sys
 
 import aprslib
 
 from decoder.formatting import hexdump
+
+_ALT_FT_RE = re.compile(r'/A=(\d+)')
 
 _MIN_AX25_LEN = 17  # 2 addrs (14) + ctrl (1) + pid (1) + 1 info byte
 
@@ -109,17 +112,44 @@ def _ax25_to_tnc2(frame: bytes) -> str | None:
 def _parse_aprs(tnc2: str, debug: bool) -> dict | None:
     try:
         return dict(aprslib.parse(tnc2))
-    except aprslib.ParseError as exc:
+    except (aprslib.ParseError, aprslib.UnknownFormat) as exc:
         if debug:
-            print(f"[DEBUG] APRS parse error: {exc} — {tnc2!r}", file=sys.stderr)
-        return None
-    except aprslib.UnknownFormat as exc:
-        if debug:
-            print(f"[DEBUG] Unknown APRS format: {exc} — {tnc2!r}", file=sys.stderr)
-        return None
+            label = "APRS parse error" if isinstance(exc, aprslib.ParseError) else "Unknown APRS format"
+            print(f"[DEBUG] {label}: {exc} — {tnc2!r}", file=sys.stderr)
+        return _fallback_parse(tnc2, debug)
     except Exception as exc:
         print(
             f"[ERROR] Unexpected APRS parse error: {type(exc).__name__}: {exc}",
             file=sys.stderr,
         )
+        return None
+
+
+def _fallback_parse(tnc2: str, debug: bool) -> dict | None:
+    """Extract callsign and altitude from a packet aprslib cannot fully decode (e.g. no GPS lock)."""
+    try:
+        header, _, info = tnc2.partition(':')
+        src, _, path_str = header.partition('>')
+        path_parts = path_str.split(',') if path_str else []
+        dest = path_parts[0] if path_parts else ''
+        digipeaters = path_parts[1:] if len(path_parts) > 1 else []
+
+        result: dict = {
+            'from': src.strip(),
+            'to': dest,
+            'path': digipeaters,
+            'format': 'partial',
+            'raw': tnc2,
+        }
+
+        alt_match = _ALT_FT_RE.search(info)
+        if alt_match:
+            result['altitude'] = int(alt_match.group(1)) * 0.3048  # feet → meters
+
+        if debug:
+            alt_str = f", alt={result['altitude']:.0f}m" if 'altitude' in result else ""
+            print(f"[DEBUG] Fallback parse: from={result['from']}{alt_str} (no position fix)", file=sys.stderr)
+
+        return result
+    except Exception:
         return None

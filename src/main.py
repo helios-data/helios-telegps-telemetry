@@ -212,7 +212,7 @@ async def main_loop(args: argparse.Namespace) -> None:
                 if packet is None:
                     continue
 
-                if helios_ready.is_set():
+                if helios_ready.is_set() and packet.get('format') != 'partial':
                     try:
                         await helios_sdk.publish_event(
                             event_name="aprs",
