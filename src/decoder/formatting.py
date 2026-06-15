@@ -30,7 +30,7 @@ def print_compact(index: int, packet: dict) -> None:
     if speed is not None: parts.append(f"spd={speed:.1f}km/h")
     if comment:           parts.append(comment[:40])
 
-    print(f"[{index}] {src:<9} [{fmt:12}] {' | '.join(parts)}")
+    print(f"[{index}] {src:<9} [{fmt:12}] {' | '.join(parts)}", flush=True)
 
 
 def print_verbose(index: int, packet: dict) -> None:
@@ -41,4 +41,4 @@ def print_verbose(index: int, packet: dict) -> None:
             print(f"    {key:<16} {val}")
     if 'raw' in packet:
         print(f"    {'raw':<16} {packet['raw']}")
-    print()
+    print(flush=True)
