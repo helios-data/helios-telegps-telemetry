@@ -46,7 +46,7 @@ sed \
     > /tmp/direwolf.conf
 
 echo "[INIT] Starting Direwolf (device=${AUDIO_DEVICE}, callsign=${MYCALL}, baud=${APRS_BAUD})..."
-direwolf -c /tmp/direwolf.conf &
+stdbuf -oL direwolf -c /tmp/direwolf.conf &
 
 echo "[INIT] Waiting for KISS port ${KISS_PORT}..."
 for i in $(seq 1 30); do
