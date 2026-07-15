@@ -1,3 +1,0 @@
-[submodule "helios-protos"]
-	path = helios-protos
-	url = git@github.com:helios-data/helios-protos.git
