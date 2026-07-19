@@ -7,7 +7,7 @@ decodes AX.25 frames into APRS fields, and publishes to Helios.
 Environment variables:
   KISS_HOST          Direwolf KISS TCP host        (default: localhost)
   KISS_PORT          Direwolf KISS TCP port        (default: 8001)
-  HELIOS_NODE_URI    Helios node URI               (default: Helios.APRS.Receiver)
+  HELIOS_NODE_URI    Helios node URI               (default: Helios.FALCON.APRS_Telemetry)
   CSV_OUTPUT_PATH    CSV log file path             (default: no logging)
 """
 
@@ -130,7 +130,7 @@ async def main_loop(args: argparse.Namespace) -> None:
     """Main loop — read AX.25 frames, decode to APRS, log and display."""
     print(f"Connecting to Direwolf KISS at {args.kiss_host}:{args.kiss_port}…")
 
-    node_uri = os.environ.get("HELIOS_NODE_URI", "Helios.Services.TeleGPS")
+    node_uri = os.environ.get("HELIOS_NODE_URI", "Helios.Services.APRS_Telemetry")
     helios_sdk = HeliosClient(
         core_address="Helios",
         core_port=5000,
