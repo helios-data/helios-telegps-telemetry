@@ -21,6 +21,7 @@ from helios import HeliosClient
 
 from decoder.csv_logger import CsvLogger
 from decoder.formatting import print_compact, print_verbose
+from decoder.helios_encoder import encode_packet
 from decoder.kiss_reader import KissReader
 from decoder.packet import decode_packet
 
@@ -84,20 +85,27 @@ async def helios_manager(
     Manages the Helios connection lifecycle independently of the reader.
 
     Flow:
-      1. Try to connect.
+      1. Tear down any stale socket, then try to connect.
       2. On success  → set `ready`, then wait for `connection_lost` or `stop`.
       3. On failure  → clear `ready`, back off, then loop.
       4. On stop     → disconnect and return.
     """
     attempt = 0
+    connected_once = False
 
     while not stop.is_set():
         connection_lost.clear()
         try:
+            # The SDK refuses to connect while a socket is still open, so always
+            # drop the previous one — otherwise every retry fails with
+            # "Already connected" and the node never recovers.
+            with contextlib.suppress(Exception):
+                await sdk.disconnect()
+
             await sdk.connect()
             ready.set()
-            label = "Connected" if attempt == 0 else "Reconnected"
-            print(f"[Helios] {label}")
+            print(f"[Helios] {'Reconnected' if connected_once else 'Connected'}")
+            connected_once = True
             attempt = 0
 
             await _wait_first(connection_lost, stop)
@@ -111,7 +119,7 @@ async def helios_manager(
         except Exception as exc:
             ready.clear()
             delay = retry_delays[min(attempt, len(retry_delays) - 1)]
-            label = "Initial connection" if attempt == 0 else "Reconnect"
+            label = "Reconnect" if connected_once else "Initial connection"
             print(
                 f"[Helios] {label} failed: {exc}. Retrying in {delay}s…",
                 file=sys.stderr,
@@ -173,7 +181,7 @@ async def main_loop(args: argparse.Namespace) -> None:
                     try:
                         await helios_sdk.publish_event(
                             event_name="aprs",
-                            data=bytes(packet),
+                            data=encode_packet(packet),
                         )
                     except Exception as exc:
                         print(f"[Helios] Send failed: {exc}", file=sys.stderr)
