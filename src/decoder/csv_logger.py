@@ -67,7 +67,7 @@ class CsvLogger:
 
     def __enter__(self) -> "CsvLogger":
         self._path.parent.mkdir(parents=True, exist_ok=True)
-        self._file = open(self._path, "w", newline="")
+        self._file = open(self._path, "w", newline="", encoding="utf-8")
         self._writer = csv.writer(self._file)
         self._writer.writerow(COLUMNS)
         return self

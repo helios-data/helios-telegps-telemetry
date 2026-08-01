@@ -41,7 +41,15 @@ def decode_packet(raw_ax25: bytes, debug: bool = False) -> dict | None:
     if debug:
         print(f"[DEBUG] TNC2: {tnc2}", file=sys.stderr)
 
-    return _parse_aprs(tnc2, debug)
+    parsed = _parse_aprs(tnc2, debug)
+    if parsed is not None:
+        return parsed
+
+    # aprslib rejected the payload, but the AX.25 frame itself was well-formed —
+    # e.g. a tracker transmitting 0xff filler in the compressed lat/lon fields
+    # while it has no GPS fix.  Pass the addresses and raw info field through so
+    # the packet is still visible downstream instead of vanishing.
+    return _unparsed_packet(tnc2)
 
 
 def _ax25_to_tnc2(frame: bytes) -> str | None:
@@ -104,6 +112,40 @@ def _ax25_to_tnc2(frame: bytes) -> str | None:
     path       = ','.join(path_parts)
 
     return f"{src}>{path}:{info_str}"
+
+
+def _unparsed_packet(tnc2: str) -> dict | None:
+    """
+    Build a minimal packet dict from a TNC2 string aprslib could not parse.
+
+    Mirrors the shape aprslib returns (`from`/`to`/`path`/`raw`) minus any
+    position fields, so every downstream consumer keeps working unchanged.
+    """
+    src, sep, rest = tnc2.partition(">")
+    if not sep:
+        return None
+
+    addrs, _, _ = rest.partition(":")
+    parts = addrs.split(",")
+
+    return {
+        "from":   src,
+        "to":     parts[0],
+        "path":   parts[1:],
+        "format": "unparsed",
+        "raw":    _printable(tnc2),
+    }
+
+
+def _printable(text: str) -> str:
+    """
+    Escape non-printable characters as <0xNN>, matching Direwolf's own display.
+
+    The info field arrives as latin-1, so it can hold bytes that are illegal in
+    a protobuf `string`, unwritable in the CSV's encoding, or invisible on the
+    console.  Escaping keeps the payload lossless and greppable everywhere.
+    """
+    return "".join(c if 32 <= ord(c) < 127 else f"<0x{ord(c):02x}>" for c in text)
 
 
 def _parse_aprs(tnc2: str, debug: bool) -> dict | None:
